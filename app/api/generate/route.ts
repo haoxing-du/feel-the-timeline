@@ -104,15 +104,18 @@ async function createReplicatePrediction(
   prompt: string,
   messages: ChatMessage[],
 ) {
+  const isDeployment = Boolean(model.deployment);
   const isOfficialModel = model.providerId.includes("/");
-  const endpoint = isOfficialModel
-    ? `https://api.replicate.com/v1/models/${model.providerId}/predictions`
-    : "https://api.replicate.com/v1/predictions";
+  const endpoint = isDeployment
+    ? `https://api.replicate.com/v1/deployments/${model.deployment}/predictions`
+    : isOfficialModel
+      ? `https://api.replicate.com/v1/models/${model.providerId}/predictions`
+      : "https://api.replicate.com/v1/predictions";
   const response = await replicateRequest(endpoint, {
     method: "POST",
     headers: { Prefer: "wait=25", "Cancel-After": "3m" },
     body: JSON.stringify({
-      ...(!isOfficialModel && { version: model.providerId }),
+      ...(!isDeployment && !isOfficialModel && { version: model.providerId }),
       input: replicateInput(model, prompt, messages),
     }),
   });

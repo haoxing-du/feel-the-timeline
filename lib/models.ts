@@ -10,6 +10,7 @@ export type ModelEra = {
   instruction: string;
   provider: "replicate" | "openrouter";
   providerId: string;
+  deployment?: string;
 };
 
 export const MIN_DATE = "2019-11-05";
@@ -25,6 +26,7 @@ export const MODEL_ERAS: ModelEra[] = [
     instruction: "Start writing something. GPT-2 will try to continue it.",
     provider: "replicate",
     providerId: "602c69856131ec3da6d3b3c260ebac8b2b552887bf9f8c60fed9c3af8a52f1af",
+    deployment: "haoxing-du/feel-timeline-gpt2-xl",
   },
   {
     released: "2021-06-09",
@@ -36,6 +38,7 @@ export const MODEL_ERAS: ModelEra[] = [
     instruction: "Give GPT-J the beginning of a document, not a request.",
     provider: "replicate",
     providerId: "b3546aeec6c9891f0dd9929c2d3bedbf013c12e02e7dd0346af09c37e008c827",
+    deployment: "haoxing-du/feel-timeline-gpt-j-6b",
   },
   {
     released: "2022-10-20",
@@ -47,6 +50,7 @@ export const MODEL_ERAS: ModelEra[] = [
     instruction: "Give it one clear task. It will not remember a second turn.",
     provider: "replicate",
     providerId: "eec2f71c986dfa3b7a5d842d22e1130550f015720966bec48beaae059b19ef4c",
+    deployment: "haoxing-du/feel-timeline-flan-t5-xl",
   },
   {
     released: "2023-07-18",
