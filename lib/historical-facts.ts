@@ -114,12 +114,13 @@ async function billboardNumberOne(date: string) {
 
 function cleanWikiCell(value: string) {
   return value
-    .replace(/^rowspan\s*=\s*"?\d+"?\s*\|\s*/i, "")
+    .replace(/^(?=[^|]*=)[^|]*\|\s*/, "")
     .replace(/\[\[[^\]|]+\|([^\]]+)\]\]/g, "$1")
     .replace(/\[\[([^\]]+)\]\]/g, "$1")
     .replace(/\{\{[^{}]*\}\}/g, "")
     .replace(/'{2,}/g, "")
     .replace(/<[^>]+>/g, "")
+    .replace(/[†‡]+\s*$/, "")
     .replace(/\s+/g, " ")
     .trim();
 }
