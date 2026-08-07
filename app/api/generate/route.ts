@@ -43,11 +43,10 @@ function replicateInput(model: (typeof MODEL_ERAS)[number], prompt: string, mess
     };
   }
 
-  if (model.name === "GPT-J 6B") {
+  if (model.name === "GPT-Neo 2.7B") {
     return {
       prompt,
-      max_length: 180,
-      decoding: "top_p",
+      max_new_tokens: 180,
       temperature: 0.8,
       top_p: 1,
       repetition_penalty: 1,

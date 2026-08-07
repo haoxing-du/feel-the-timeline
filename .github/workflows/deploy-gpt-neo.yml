@@ -1,0 +1,23 @@
+name: Deploy GPT-Neo to Replicate
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: models/gpt-neo-2.7b
+    steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          docker-images: false
+      - uses: actions/checkout@v4
+      - uses: replicate/setup-cog@v2
+        with:
+          token: ${{ secrets.REPLICATE_CLI_AUTH_TOKEN }}
+      - name: Push model
+        run: cog push
