@@ -86,6 +86,7 @@ export function TimelineExperience() {
   const [error, setError] = useState("");
   const [basic, setBasic] = useState<BasicDayContext | null>(null);
   const [storyData, setStoryData] = useState<StoryData | null>(null);
+  const [storyRevealCount, setStoryRevealCount] = useState(0);
   const [prompt, setPrompt] = useState("");
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [generationError, setGenerationError] = useState("");
@@ -106,27 +107,36 @@ export function TimelineExperience() {
 
   useEffect(() => {
     if (view !== "journey") return;
-    const timers = [150, 1150, 2150, 3150, 4150].map((delay, index) =>
+    const timers = [150, 2_650, 5_150, 7_650, 10_150, 12_650].map((delay, index) =>
       window.setTimeout(() => setRevealStep(index + 1), delay),
     );
     return () => timers.forEach(window.clearTimeout);
   }, [view]);
 
   useEffect(() => {
-    if (!storyData || revealStep !== 5) return;
-    const timer = window.setTimeout(() => setRevealStep(6), 500);
+    if (!storyData || revealStep !== 6) return;
+    const timer = window.setTimeout(() => setRevealStep(7), 2_500);
     return () => window.clearTimeout(timer);
   }, [revealStep, storyData]);
 
   useEffect(() => {
-    if (revealStep !== 6) return;
+    if (revealStep !== 7 || !storyData) return;
     storyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    const timer = window.setTimeout(() => setRevealStep(7), 7_000);
-    return () => window.clearTimeout(timer);
-  }, [revealStep]);
+    const storyTimers = storyData.stories.map((_, index) =>
+      window.setTimeout(() => setStoryRevealCount(index + 1), 700 + index * 4_000),
+    );
+    const chatTimer = window.setTimeout(
+      () => setRevealStep(8),
+      Math.max(2_500, 1_700 + storyData.stories.length * 4_000),
+    );
+    return () => {
+      storyTimers.forEach(window.clearTimeout);
+      window.clearTimeout(chatTimer);
+    };
+  }, [revealStep, storyData]);
 
   useEffect(() => {
-    if (revealStep === 7) chatRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (revealStep === 8) chatRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [revealStep]);
 
   useEffect(() => {
@@ -155,6 +165,7 @@ export function TimelineExperience() {
     setRevealStep(0);
     setBasic(null);
     setStoryData(null);
+    setStoryRevealCount(0);
     setMessages([]);
     setPrompt("");
     setView("journey");
@@ -180,6 +191,7 @@ export function TimelineExperience() {
     setError("");
     setBasic(null);
     setStoryData(null);
+    setStoryRevealCount(0);
     setMessages([]);
     setPrompt("");
     setGenerationError("");
@@ -296,17 +308,21 @@ export function TimelineExperience() {
               <div className={`world-lines ${revealStep >= 5 ? "revealed" : ""}`}>
                 {usPresident && <p>{usPresident} was President of the United States.</p>}
                 {ukPrimeMinister && <p>{ukPrimeMinister} was Prime Minister of the United Kingdom.</p>}
-                {basic.sport && <p>In sports, <a href={basic.sport.sourceUrl} rel="noreferrer" target="_blank">{basic.sport.text}</a></p>}
               </div>
+              {basic.sport && (
+                <p className={revealStep >= 6 ? "revealed sport-line" : "sport-line"}>
+                  In sports, <a href={basic.sport.sourceUrl} rel="noreferrer" target="_blank">{basic.sport.text}</a>
+                </p>
+              )}
             </>
           )}
         </section>
 
-        <section className={`story-section ${revealStep >= 6 ? "revealed" : ""}`} ref={storyRef}>
+        <section className={`story-section ${revealStep >= 7 ? "revealed" : ""}`} ref={storyRef}>
           <h2>Three stories from that day.</h2>
           <div className="story-grid">
             {storyData?.stories.map((story, index) => (
-              <article className="story-card" key={story.title}>
+              <article className={`story-card ${index < storyRevealCount ? "revealed" : ""}`} key={story.title}>
                 <span>{String(index + 1).padStart(2, "0")}</span>
                 <h3>{story.title}</h3>
                 <div>
@@ -322,7 +338,7 @@ export function TimelineExperience() {
           </div>
         </section>
 
-        <section className={`anonymous-chat ${revealStep >= 7 ? "revealed" : ""}`} ref={chatRef}>
+        <section className={`anonymous-chat ${revealStep >= 8 ? "revealed" : ""}`} ref={chatRef}>
           <h2>Talk to the latest LLM available on {formatDate(date)}.</h2>
           <div className="conversation" aria-live="polite">
             {messages.map((message, index) => (

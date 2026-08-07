@@ -248,6 +248,12 @@ a {
   text-underline-offset: 4px;
 }
 
+.sport-line a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
 .story-section,
 .anonymous-chat {
   opacity: 0;
@@ -282,6 +288,14 @@ a {
 .story-card {
   min-width: 0;
   padding: 24px;
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 700ms ease, transform 700ms ease;
+}
+
+.story-card.revealed {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .story-card:first-child {
@@ -324,23 +338,6 @@ a {
   font-size: 7px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-}
-
-.story-section.revealed .story-card {
-  animation: card-in 650ms both;
-}
-
-.story-section.revealed .story-card:nth-child(2) {
-  animation-delay: 180ms;
-}
-
-.story-section.revealed .story-card:nth-child(3) {
-  animation-delay: 360ms;
-}
-
-@keyframes card-in {
-  from { opacity: 0; transform: translateY(18px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 .anonymous-chat {
