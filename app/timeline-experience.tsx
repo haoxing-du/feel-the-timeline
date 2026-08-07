@@ -18,6 +18,11 @@ type GenerationResult = {
 };
 
 type DayContext = {
+  stories?: Array<{
+    label: string;
+    title: string;
+    headlines: Array<{ text: string; source: string; sourceUrl: string }>;
+  }>;
   headlines?: Array<{ text: string; source: string; sourceUrl: string }>;
   headline?: { text: string; source: string; sourceUrl: string } | null;
   culture: { text: string; source: string; sourceUrl: string } | null;
@@ -107,7 +112,7 @@ export function TimelineExperience() {
     setDayContext(null);
     setIsLoadingDay(true);
     try {
-      const response = await fetch(`/api/day?date=${encodeURIComponent(selectedDate)}&v=2`);
+      const response = await fetch(`/api/day?date=${encodeURIComponent(selectedDate)}&v=3`);
       if (response.ok) setDayContext(await response.json() as DayContext);
     } finally {
       setIsLoadingDay(false);
@@ -188,6 +193,14 @@ export function TimelineExperience() {
     ? "Your age stays private."
     : `You were about ${approximateAge} years old.`;
   const dayHeadlines = dayContext?.headlines ?? (dayContext?.headline ? [dayContext.headline] : []);
+  const dayStories = dayContext?.stories?.length
+    ? dayContext.stories
+    : dayHeadlines.slice(0, 3).map((headline, index) => ({
+        label: ["The defining story", "Also unfolding", "One for the time capsule"][index],
+        title: headline.text,
+        headlines: [headline],
+      }));
+  const displayedHeadlines = dayStories.flatMap((story) => story.headlines);
 
   return (
     <main className={`timeline-app ${hasArrived ? "is-travelling" : ""} ${isExhibit ? "is-exhibit" : ""}`}>
@@ -349,17 +362,25 @@ export function TimelineExperience() {
                 <p className="context-loading">Reconstructing the day…</p>
               ) : dayContext ? (
                 <>
-                  <div className="headline-grid">
-                    {dayHeadlines.length ? dayHeadlines.map((headline) => (
-                      <article className="headline-card" key={headline.sourceUrl}>
-                        <p className="eyebrow">{headline.source}</p>
-                        <p>{headline.text}</p>
-                        <a href={headline.sourceUrl} rel="noreferrer" target="_blank">Read the archive ↗</a>
+                  <div className="story-grid">
+                    {dayStories.length ? dayStories.map((story) => (
+                      <article className="story-card" key={story.label}>
+                        <p className="eyebrow">{story.label}</p>
+                        <h3>{story.title}</h3>
+                        <div className="story-sources">
+                          {story.headlines.map((headline) => (
+                            <a href={headline.sourceUrl} key={headline.sourceUrl} rel="noreferrer" target="_blank">
+                              <span>{headline.source}</span>
+                              <p>{headline.text}</p>
+                              <small>Read the archive ↗</small>
+                            </a>
+                          ))}
+                        </div>
                       </article>
                     )) : (
-                      <article className="headline-card">
+                      <article className="story-card">
                         <p className="eyebrow">In the news</p>
-                        <p>No archived headline was available for this day.</p>
+                        <h3>No archived headline was available for this day.</h3>
                       </article>
                     )}
                   </div>
@@ -377,7 +398,7 @@ export function TimelineExperience() {
                     ))}
                   </div>
 
-                  {dayContext.culture && !dayHeadlines.some((headline) => headline.text === dayContext.culture?.text) && (
+                  {dayContext.culture && !displayedHeadlines.some((headline) => headline.text === dayContext.culture?.text) && (
                     <article className="culture-note">
                       <span>Culture</span>
                       <p>{dayContext.culture.text}</p>
