@@ -193,13 +193,14 @@ a {
 
 .fact-stream h1,
 .fact-stream > p,
-.world-lines {
+.fact-item {
   opacity: 0;
   transform: translateY(12px);
   transition: opacity 600ms ease, transform 600ms ease;
 }
 
 .fact-stream .revealed,
+.fact-item,
 .story-section.revealed,
 .anonymous-chat.revealed {
   opacity: 1;
@@ -216,6 +217,7 @@ a {
 }
 
 .fact-stream > p,
+.fact-item > p,
 .world-lines p {
   max-width: 920px;
   margin: 0 0 20px;
@@ -223,6 +225,19 @@ a {
   font-size: clamp(25px, 3.5vw, 46px);
   line-height: 1.08;
   letter-spacing: -0.028em;
+}
+
+.fact-item {
+  animation: fact-arrives 600ms ease both;
+}
+
+.fact-item > p {
+  margin-top: 0;
+}
+
+@keyframes fact-arrives {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .fact-stream i {

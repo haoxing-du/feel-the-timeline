@@ -27,6 +27,16 @@ type BasicDayContext = {
   taylorSwiftAlbum: string;
   sport: { text: string; sourceUrl: string } | null;
   leaders: Array<{ country: string; office: string; name: string }>;
+  historical: {
+    billboard: { song: string; artist: string } | null;
+    boxOfficeMovie: string | null;
+    weather: { highF: number; lowF: number; description: string } | null;
+    newestIPhone: string;
+    champions: { nba: string; nfl: string; mlb: string; premierLeague: string };
+    gasPriceUsd: number | null;
+    federalMinimumWageUsd: number;
+    medianListingPrice: { unitedStates: number | null; sanFrancisco: number | null };
+  };
 };
 
 type StoryData = {
@@ -38,6 +48,10 @@ type StoryData = {
 };
 
 const DEFAULT_DATE = "2022-11-30";
+const FACT_COUNT = 12;
+const LAST_FACT_STEP = FACT_COUNT + 2;
+const STORY_STEP = LAST_FACT_STEP + 1;
+const CHAT_STEP = STORY_STEP + 1;
 
 function formatDate(date: string) {
   return new Intl.DateTimeFormat("en-US", {
@@ -92,6 +106,7 @@ export function TimelineExperience() {
   const [generationError, setGenerationError] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const storyRef = useRef<HTMLElement>(null);
+  const factEndRef = useRef<HTMLDivElement>(null);
   const chatRef = useRef<HTMLElement>(null);
   const identityRef = useRef<HTMLElement>(null);
 
@@ -107,26 +122,40 @@ export function TimelineExperience() {
 
   useEffect(() => {
     if (view !== "journey") return;
-    const timers = [150, 2_650, 5_150, 7_650, 10_150, 12_650].map((delay, index) =>
+    const timers = [150, 2_650].map((delay, index) =>
       window.setTimeout(() => setRevealStep(index + 1), delay),
     );
     return () => timers.forEach(window.clearTimeout);
   }, [view]);
 
   useEffect(() => {
-    if (!storyData || revealStep !== 6) return;
-    const timer = window.setTimeout(() => setRevealStep(7), 2_500);
+    if (!basic) return;
+    const timers = Array.from({ length: FACT_COUNT }, (_, index) =>
+      window.setTimeout(() => setRevealStep(index + 3), 650 + index * 2_500),
+    );
+    return () => timers.forEach(window.clearTimeout);
+  }, [basic]);
+
+  useEffect(() => {
+    if (revealStep < 3 || revealStep > LAST_FACT_STEP) return;
+    const timer = window.setTimeout(() => factEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 120);
+    return () => window.clearTimeout(timer);
+  }, [revealStep]);
+
+  useEffect(() => {
+    if (!storyData || revealStep !== LAST_FACT_STEP) return;
+    const timer = window.setTimeout(() => setRevealStep(STORY_STEP), 2_500);
     return () => window.clearTimeout(timer);
   }, [revealStep, storyData]);
 
   useEffect(() => {
-    if (revealStep !== 7 || !storyData) return;
+    if (revealStep !== STORY_STEP || !storyData) return;
     storyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     const storyTimers = storyData.stories.map((_, index) =>
       window.setTimeout(() => setStoryRevealCount(index + 1), 700 + index * 4_000),
     );
     const chatTimer = window.setTimeout(
-      () => setRevealStep(8),
+      () => setRevealStep(CHAT_STEP),
       Math.max(2_500, 1_700 + storyData.stories.length * 4_000),
     );
     return () => {
@@ -136,7 +165,7 @@ export function TimelineExperience() {
   }, [revealStep, storyData]);
 
   useEffect(() => {
-    if (revealStep === 8) chatRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (revealStep === CHAT_STEP) chatRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [revealStep]);
 
   useEffect(() => {
@@ -174,7 +203,7 @@ export function TimelineExperience() {
 
   async function loadDay(selectedDate: string) {
     const encodedDate = encodeURIComponent(selectedDate);
-    void fetch(`/api/day/basic?date=${encodedDate}&v=1`)
+    void fetch(`/api/day/basic?date=${encodedDate}&v=2`)
       .then((response) => response.ok ? response.json() : null)
       .then((payload) => setBasic(payload as BasicDayContext | null))
       .catch(() => setBasic(null));
@@ -243,6 +272,44 @@ export function TimelineExperience() {
     : `You were about ${selectedYear - Number(birthYear)} years old.`;
   const usPresident = basic?.leaders.find((leader) => leader.country === "United States")?.name;
   const ukPrimeMinister = basic?.leaders.find((leader) => leader.country === "United Kingdom")?.name;
+  const money = (value: number | null) => value === null ? "unavailable" : `$${Math.round(value).toLocaleString("en-US")}`;
+  const facts = basic ? [
+    <p key="bitcoin">Bitcoin was worth {money(basic.bitcoinUsd)}.</p>,
+    <p key="taylor">Taylor Swift’s latest album was <i>{basic.taylorSwiftAlbum}</i>.</p>,
+    <p key="billboard">
+      {basic.historical.billboard
+        ? <>The No. 1 song was <i>{basic.historical.billboard.song}</i> by {basic.historical.billboard.artist}.</>
+        : <>The No. 1 song is unavailable.</>}
+    </p>,
+    <p key="box-office">
+      {basic.historical.boxOfficeMovie
+        ? <>The weekend box-office winner was <i>{basic.historical.boxOfficeMovie}</i>.</>
+        : <>The weekend box-office winner is unavailable.</>}
+    </p>,
+    <p key="weather">
+      {basic.historical.weather
+        ? <>San Francisco was {basic.historical.weather.description}, with a high of {Math.round(basic.historical.weather.highF)}° and a low of {Math.round(basic.historical.weather.lowF)}°.</>
+        : <>San Francisco weather is unavailable.</>}
+    </p>,
+    <p key="iphone">The newest iPhone was the {basic.historical.newestIPhone}.</p>,
+    <div className="world-lines" key="leaders">
+      {usPresident && <p>{usPresident} was President of the United States.</p>}
+      {ukPrimeMinister && <p>{ukPrimeMinister} was Prime Minister of the United Kingdom.</p>}
+    </div>,
+    <div className="world-lines" key="champions">
+      <p>Reigning NBA and NFL champions: {basic.historical.champions.nba} and {basic.historical.champions.nfl}.</p>
+      <p>Reigning MLB and Premier League champions: {basic.historical.champions.mlb} and {basic.historical.champions.premierLeague}.</p>
+    </div>,
+    basic.sport
+      ? <p className="sport-line" key="sport">In sports, <a href={basic.sport.sourceUrl} rel="noreferrer" target="_blank">{basic.sport.text}</a></p>
+      : <p key="sport">The day’s sports headline is unavailable.</p>,
+    <p key="gas">A gallon of regular gas averaged {basic.historical.gasPriceUsd === null ? "an unavailable amount" : `$${basic.historical.gasPriceUsd.toFixed(2)}`} in the US.</p>,
+    <p key="minimum-wage">The federal minimum wage was ${basic.historical.federalMinimumWageUsd.toFixed(2)} an hour.</p>,
+    <div className="world-lines" key="housing">
+      <p>The median US home listing price was {money(basic.historical.medianListingPrice.unitedStates)}.</p>
+      <p>In San Francisco, it was {money(basic.historical.medianListingPrice.sanFrancisco)}.</p>
+    </div>,
+  ] : [];
   const timelineCursor = Math.min(100, Math.max(0, ((selectedYear - 2019) / 7) * 100));
 
   if (view === "landing") {
@@ -297,28 +364,13 @@ export function TimelineExperience() {
         <section className="fact-stream" aria-live="polite">
           <h1 className={revealStep >= 1 ? "revealed" : ""}>{formatDate(date)}</h1>
           <p className={revealStep >= 2 ? "revealed" : ""}>{ageLine}</p>
-          {basic && (
-            <>
-              <p className={revealStep >= 3 ? "revealed" : ""}>
-                Bitcoin was worth {basic.bitcoinUsd === null ? "an unavailable amount" : `$${Math.round(basic.bitcoinUsd).toLocaleString("en-US")}`}.
-              </p>
-              <p className={revealStep >= 4 ? "revealed" : ""}>
-                Taylor Swift’s latest album was <i>{basic.taylorSwiftAlbum}</i>.
-              </p>
-              <div className={`world-lines ${revealStep >= 5 ? "revealed" : ""}`}>
-                {usPresident && <p>{usPresident} was President of the United States.</p>}
-                {ukPrimeMinister && <p>{ukPrimeMinister} was Prime Minister of the United Kingdom.</p>}
-              </div>
-              {basic.sport && (
-                <p className={revealStep >= 6 ? "revealed sport-line" : "sport-line"}>
-                  In sports, <a href={basic.sport.sourceUrl} rel="noreferrer" target="_blank">{basic.sport.text}</a>
-                </p>
-              )}
-            </>
-          )}
+          {facts.slice(0, Math.max(0, revealStep - 2)).map((fact) => (
+            <div className="fact-item" key={fact.key}>{fact}</div>
+          ))}
+          <div ref={factEndRef} />
         </section>
 
-        <section className={`story-section ${revealStep >= 7 ? "revealed" : ""}`} ref={storyRef}>
+        <section className={`story-section ${revealStep >= STORY_STEP ? "revealed" : ""}`} ref={storyRef}>
           <h2>Three stories from that day.</h2>
           <div className="story-grid">
             {storyData?.stories.map((story, index) => (
@@ -338,7 +390,7 @@ export function TimelineExperience() {
           </div>
         </section>
 
-        <section className={`anonymous-chat ${revealStep >= 8 ? "revealed" : ""}`} ref={chatRef}>
+        <section className={`anonymous-chat ${revealStep >= CHAT_STEP ? "revealed" : ""}`} ref={chatRef}>
           <h2>Talk to the latest LLM available on {formatDate(date)}.</h2>
           <div className="conversation" aria-live="polite">
             {messages.map((message, index) => (

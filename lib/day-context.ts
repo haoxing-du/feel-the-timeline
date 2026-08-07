@@ -1,3 +1,5 @@
+import { historicalFacts, type HistoricalFacts } from "@/lib/historical-facts";
+
 type NewsItem = {
   text: string;
   source: string;
@@ -17,6 +19,7 @@ export type BasicDayContext = {
   taylorSwiftAlbum: string;
   sport: NewsItem | null;
   leaders: Array<{ country: string; office: string; name: string }>;
+  historical: HistoricalFacts;
 };
 
 type DayStory = {
@@ -357,7 +360,7 @@ function taylorSwiftAlbumForDate(date: string) {
 }
 
 export async function getBasicDayContext(date: string): Promise<BasicDayContext> {
-  const [news, bitcoinUsd, sport] = await Promise.all([
+  const [news, bitcoinUsd, sport, historical] = await Promise.all([
     currentEvents(date).catch((error) => {
       console.error("Could not load current events", error);
       return { headline: null, culture: null, sport: null, topics: [] };
@@ -370,6 +373,7 @@ export async function getBasicDayContext(date: string): Promise<BasicDayContext>
       console.error("Could not load sports archive", error);
       return null;
     }),
+    historicalFacts(date),
   ]);
 
   return {
@@ -377,6 +381,7 @@ export async function getBasicDayContext(date: string): Promise<BasicDayContext>
     taylorSwiftAlbum: taylorSwiftAlbumForDate(date),
     sport: news.sport ?? sport,
     leaders: leadersForDate(date),
+    historical,
   };
 }
 
