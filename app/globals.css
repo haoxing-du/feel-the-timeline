@@ -347,9 +347,13 @@ button {
   padding: 21px 0;
 }
 
-.headline-card + .headline-card {
+.headline-card:nth-child(even) {
   padding-left: 24px;
   border-left: 1px solid var(--line);
+}
+
+.headline-card:nth-child(n + 3) {
+  border-top: 1px solid var(--line);
 }
 
 .headline-card .eyebrow {
@@ -839,10 +843,13 @@ button {
     grid-template-columns: 1fr;
   }
 
-  .headline-card + .headline-card {
+  .headline-card:nth-child(even) {
     padding-left: 0;
-    border-top: 1px solid var(--line);
     border-left: 0;
+  }
+
+  .headline-card:nth-child(n + 2) {
+    border-top: 1px solid var(--line);
   }
 
   .arrival-stage {

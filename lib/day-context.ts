@@ -12,43 +12,31 @@ export type DayContext = {
 };
 
 type HeadlineCandidate = NewsItem & {
-  description?: string;
   section?: string;
   type?: string;
-  printPage?: string;
-  printSection?: string;
 };
 
-const STOP_WORDS = new Set([
-  "about", "after", "against", "amid", "and", "are", "been", "being", "from", "have", "into",
-  "more", "over", "said", "says", "than", "that", "their", "them", "they", "this", "through",
-  "under", "with", "will", "would",
-]);
+function sampleHeadlines(candidates: HeadlineCandidate[], seedText: string, count = 3) {
+  const excludedSections = /^(sport|sports|football|lifeandstyle|fashion|food|travel|crosswords|opinion)$/i;
+  const news = candidates.filter((candidate) =>
+    !excludedSections.test(candidate.section ?? "") && (!candidate.type || candidate.type === "News"),
+  );
+  const pool = (news.length >= count ? news : candidates).sort((a, b) => a.sourceUrl.localeCompare(b.sourceUrl));
+  let seed = 2166136261;
+  for (const character of seedText) seed = Math.imul(seed ^ character.charCodeAt(0), 16777619);
+  const random = () => {
+    seed += 0x6d2b79f5;
+    let value = seed;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
 
-function words(value: string) {
-  return new Set(value.toLowerCase().match(/[a-z]{4,}/g)?.filter((word) => !STOP_WORDS.has(word)) ?? []);
-}
-
-function pickHeadline(candidates: HeadlineCandidate[], topic: string) {
-  const topicWords = words(topic);
-  const preferredSections = /^(world|us-news|news|politics|business|technology|science|health)$/i;
-  const excludedSections = /^(sport|football|lifeandstyle|fashion|food|travel|crosswords|opinion)$/i;
-
-  const selected = candidates
-    .map((candidate) => {
-      const candidateWords = words(`${candidate.text} ${candidate.description ?? ""}`);
-      const overlap = [...candidateWords].filter((word) => topicWords.has(word)).length;
-      const score = (overlap >= 2 ? overlap * 20 : 0)
-        + (preferredSections.test(candidate.section ?? "") ? 4 : 0)
-        + (candidate.type === "News" ? 3 : 0)
-        + (candidate.printPage === "1" ? 2 : 0)
-        + (candidate.printPage === "1" && candidate.printSection === "A" ? 8 : 0)
-        - (excludedSections.test(candidate.section ?? "") ? 12 : 0);
-      return { candidate, score };
-    })
-    .sort((a, b) => b.score - a.score)[0]?.candidate;
-  if (!selected) return null;
-  return { text: selected.text, source: selected.source, sourceUrl: selected.sourceUrl };
+  for (let index = pool.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [pool[index], pool[swapIndex]] = [pool[swapIndex], pool[index]];
+  }
+  return pool.slice(0, count).map(({ text, source, sourceUrl }) => ({ text, source, sourceUrl }));
 }
 
 function stripWikiMarkup(value: string) {
@@ -111,7 +99,7 @@ async function currentEvents(date: string) {
   };
 }
 
-async function guardianHeadline(date: string, topic: string): Promise<NewsItem | null> {
+async function guardianHeadlines(date: string): Promise<NewsItem[]> {
   const url = new URL("https://content.guardianapis.com/search");
   url.search = new URLSearchParams({
     "from-date": date,
@@ -123,7 +111,7 @@ async function guardianHeadline(date: string, topic: string): Promise<NewsItem |
   }).toString();
 
   const response = await fetch(url);
-  if (!response.ok) return null;
+  if (!response.ok) return [];
   const payload = await response.json() as {
     response?: { results?: Array<{ webTitle: string; webUrl: string; sectionId?: string }> };
   };
@@ -133,25 +121,22 @@ async function guardianHeadline(date: string, topic: string): Promise<NewsItem |
     sourceUrl: item.webUrl,
     section: item.sectionId,
   }));
-  return pickHeadline(candidates, topic);
+  return sampleHeadlines(candidates, `${date}:guardian`);
 }
 
-async function nytHeadline(date: string, topic: string): Promise<NewsItem | null> {
+async function nytHeadlines(date: string): Promise<NewsItem[]> {
   const apiKey = process.env.NYT_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) return [];
 
   const [year, month] = date.split("-");
   const url = new URL(`https://api.nytimes.com/svc/archive/v1/${year}/${Number(month)}.json`);
   url.searchParams.set("api-key", apiKey);
 
   const response = await fetch(url);
-  if (!response.ok) return null;
+  if (!response.ok) return [];
   const payload = await response.json() as {
     response?: { docs?: Array<{
-      abstract?: string;
       headline?: { main?: string };
-      print_page?: string;
-      print_section?: string;
       pub_date?: string;
       section_name?: string;
       type_of_material?: string;
@@ -164,13 +149,10 @@ async function nytHeadline(date: string, topic: string): Promise<NewsItem | null
       text: item.headline!.main!,
       source: "The New York Times",
       sourceUrl: item.web_url!,
-      description: item.abstract,
       section: item.section_name,
       type: item.type_of_material,
-      printPage: item.print_page,
-      printSection: item.print_section,
     }));
-  return pickHeadline(candidates, topic);
+  return sampleHeadlines(candidates, `${date}:nyt`);
 }
 
 async function bitcoinPrice(date: string) {
@@ -203,27 +185,25 @@ function leadersForDate(date: string) {
 }
 
 export async function getDayContext(date: string): Promise<DayContext> {
-  const bitcoinPromise = bitcoinPrice(date).catch((error) => {
-    console.error("Could not load Bitcoin price", error);
-    return null;
-  });
-  const news = await currentEvents(date).catch((error) => {
-    console.error("Could not load current events", error);
-    return { headline: null, culture: null };
-  });
-  const topic = news.headline?.text ?? "";
-  const [guardian, nyt, bitcoinUsd] = await Promise.all([
-    guardianHeadline(date, topic).catch((error) => {
+  const [news, guardian, nyt, bitcoinUsd] = await Promise.all([
+    currentEvents(date).catch((error) => {
+      console.error("Could not load current events", error);
+      return { headline: null, culture: null };
+    }),
+    guardianHeadlines(date).catch((error) => {
       console.error("Could not load Guardian archive", error);
-      return null;
+      return [];
     }),
-    nytHeadline(date, topic).catch((error) => {
+    nytHeadlines(date).catch((error) => {
       console.error("Could not load NYT archive", error);
+      return [];
+    }),
+    bitcoinPrice(date).catch((error) => {
+      console.error("Could not load Bitcoin price", error);
       return null;
     }),
-    bitcoinPromise,
   ]);
-  const headlines = [guardian, nyt].filter((item): item is NewsItem => item !== null);
+  const headlines = [...guardian, ...nyt];
 
   return {
     headlines: headlines.length ? headlines : news.headline ? [news.headline] : [],

@@ -349,7 +349,7 @@ export function TimelineExperience() {
                 <>
                   <div className="headline-grid">
                     {dayContext.headlines.length ? dayContext.headlines.map((headline) => (
-                      <article className="headline-card" key={headline.source}>
+                      <article className="headline-card" key={headline.sourceUrl}>
                         <p className="eyebrow">{headline.source}</p>
                         <p>{headline.text}</p>
                         <a href={headline.sourceUrl} rel="noreferrer" target="_blank">Read the archive ↗</a>
