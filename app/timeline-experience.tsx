@@ -17,6 +17,13 @@ type GenerationResult = {
   error?: string;
 };
 
+type DayContext = {
+  headline: { text: string; source: string; sourceUrl: string } | null;
+  culture: { text: string; source: string; sourceUrl: string } | null;
+  bitcoinUsd: number | null;
+  leaders: Array<{ country: string; office: string; name: string }>;
+};
+
 const DEFAULT_DATE = "2022-11-30";
 
 function formatDate(date: string) {
@@ -63,6 +70,8 @@ export function TimelineExperience() {
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [generationError, setGenerationError] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [dayContext, setDayContext] = useState<DayContext | null>(null);
+  const [isLoadingDay, setIsLoadingDay] = useState(false);
 
   const model = useMemo(() => modelForDate(date), [date]);
   const selectedYear = Number(date.slice(0, 4));
@@ -90,6 +99,18 @@ export function TimelineExperience() {
     setError("");
     setRevealCount(0);
     setHasArrived(true);
+    void loadDay(date);
+  }
+
+  async function loadDay(selectedDate: string) {
+    setDayContext(null);
+    setIsLoadingDay(true);
+    try {
+      const response = await fetch(`/api/day?date=${encodeURIComponent(selectedDate)}`);
+      if (response.ok) setDayContext(await response.json() as DayContext);
+    } finally {
+      setIsLoadingDay(false);
+    }
   }
 
   function reset() {
@@ -100,6 +121,7 @@ export function TimelineExperience() {
     setCompletion("");
     setMessages([]);
     setGenerationError("");
+    setDayContext(null);
   }
 
   function enterExhibit() {
@@ -319,7 +341,48 @@ export function TimelineExperience() {
           <div className="arrival-stage">
             <p className={`arrival-line quiet ${revealCount >= 1 ? "is-visible" : ""}`}>{ageCopy}</p>
             <h1 className={`arrival-date ${revealCount >= 2 ? "is-visible" : ""}`}>{formatDate(date)}</h1>
-            <p className={`arrival-line ${revealCount >= 3 ? "is-visible" : ""}`}>{model.arrival}</p>
+
+            <div className={`day-context ${revealCount >= 3 ? "is-visible" : ""}`}>
+              {isLoadingDay ? (
+                <p className="context-loading">Reconstructing the day…</p>
+              ) : dayContext ? (
+                <>
+                  <article className="headline-card">
+                    <p className="eyebrow">In the news</p>
+                    {dayContext.headline ? (
+                      <>
+                        <p>{dayContext.headline.text}</p>
+                        <a href={dayContext.headline.sourceUrl} rel="noreferrer" target="_blank">{dayContext.headline.source} ↗</a>
+                      </>
+                    ) : <p>No archived headline was available for this day.</p>}
+                  </article>
+
+                  <div className="day-signals">
+                    <div>
+                      <span>Bitcoin</span>
+                      <strong>{dayContext.bitcoinUsd === null ? "Unavailable" : `$${Math.round(dayContext.bitcoinUsd).toLocaleString("en-US")}`}</strong>
+                    </div>
+                    {dayContext.leaders.map((leader) => (
+                      <div key={leader.country}>
+                        <span>{leader.country} · {leader.office}</span>
+                        <strong>{leader.name}</strong>
+                      </div>
+                    ))}
+                  </div>
+
+                  {dayContext.culture && dayContext.culture.text !== dayContext.headline?.text && (
+                    <article className="culture-note">
+                      <span>Culture</span>
+                      <p>{dayContext.culture.text}</p>
+                    </article>
+                  )}
+                </>
+              ) : (
+                <p className="context-loading">Some historical signals are unavailable.</p>
+              )}
+            </div>
+
+            <p className={`arrival-line model-arrival ${revealCount >= 4 ? "is-visible" : ""}`}>{model.arrival}</p>
 
             <article className={`model-reveal ${revealCount >= 4 ? "is-visible" : ""}`}>
               <div>

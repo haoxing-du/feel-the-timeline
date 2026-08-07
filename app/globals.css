@@ -290,12 +290,13 @@ button {
 }
 
 .arrival-stage {
-  min-height: 480px;
+  min-height: 660px;
   padding: clamp(38px, 8vh, 86px) 0 30px;
 }
 
 .arrival-line,
 .arrival-date,
+.day-context,
 .model-reveal {
   opacity: 0;
   transform: translateY(12px);
@@ -304,6 +305,7 @@ button {
 
 .arrival-line.is-visible,
 .arrival-date.is-visible,
+.day-context.is-visible,
 .model-reveal.is-visible {
   opacity: 1;
   transform: translateY(0);
@@ -330,8 +332,109 @@ button {
   line-height: 0.88;
 }
 
+.day-context {
+  margin: 28px 0 36px;
+}
+
+.headline-card {
+  padding: 21px 0;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+}
+
+.headline-card .eyebrow {
+  margin-bottom: 10px;
+}
+
+.headline-card > p:not(.eyebrow) {
+  max-width: 900px;
+  margin: 0;
+  font-family: var(--font-display), serif;
+  font-size: clamp(23px, 3vw, 38px);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+}
+
+.headline-card a {
+  display: inline-block;
+  margin-top: 13px;
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 8px;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.day-signals {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid var(--line);
+}
+
+.day-signals > div {
+  min-width: 0;
+  padding: 13px 15px 14px 0;
+}
+
+.day-signals > div + div {
+  padding-left: 15px;
+  border-left: 1px solid var(--line);
+}
+
+.day-signals span,
+.culture-note > span {
+  display: block;
+  margin-bottom: 5px;
+  overflow: hidden;
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 7px;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  letter-spacing: 0.08em;
+}
+
+.day-signals strong {
+  display: block;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.culture-note {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 16px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.culture-note p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.context-loading {
+  padding: 28px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+}
+
+.model-arrival {
+  margin-top: 45px;
+}
+
 .model-reveal {
-  margin-top: 58px;
+  margin-top: 24px;
   padding: 24px 0;
   border-top: 1px solid var(--ink);
   border-bottom: 1px solid var(--ink);
@@ -670,6 +773,20 @@ button {
     gap: 25px;
   }
 
+  .day-signals {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .day-signals > div:nth-child(3) {
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .day-signals > div:nth-child(4) {
+    border-top: 1px solid var(--line);
+  }
+
   .exhibit {
     grid-template-columns: 1fr;
     gap: 26px;
@@ -710,7 +827,7 @@ button {
   }
 
   .arrival-stage {
-    min-height: 510px;
+    min-height: 760px;
   }
 
   .arrival-actions {
