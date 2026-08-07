@@ -8,4 +8,4 @@ build:
     - >-
       python -c "from huggingface_hub import snapshot_download; snapshot_download('EleutherAI/gpt-neo-2.7B', revision='e24fa291132763e59f4a5422741b424fb5d59056', local_dir='/weights', allow_patterns=['config.json','model.safetensors','merges.txt','vocab.json','tokenizer_config.json','special_tokens_map.json'])"
 
-run: "predict.py:Runner"
+predict: "predict.py:Predictor"

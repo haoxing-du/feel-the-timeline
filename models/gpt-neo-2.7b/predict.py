@@ -1,9 +1,9 @@
 import torch
-from cog import BaseRunner, Input
+from cog import BasePredictor, Input
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
-class Runner(BaseRunner):
+class Predictor(BasePredictor):
     def setup(self):
         self.tokenizer = AutoTokenizer.from_pretrained("/weights")
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -13,7 +13,7 @@ class Runner(BaseRunner):
         ).to("cuda").eval()
 
     @torch.inference_mode()
-    def run(
+    def predict(
         self,
         prompt: str = Input(description="Text for GPT-Neo to continue"),
         max_new_tokens: int = Input(default=180, ge=1, le=400),
