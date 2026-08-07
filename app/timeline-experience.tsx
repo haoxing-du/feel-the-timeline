@@ -18,7 +18,8 @@ type GenerationResult = {
 };
 
 type DayContext = {
-  headlines: Array<{ text: string; source: string; sourceUrl: string }>;
+  headlines?: Array<{ text: string; source: string; sourceUrl: string }>;
+  headline?: { text: string; source: string; sourceUrl: string } | null;
   culture: { text: string; source: string; sourceUrl: string } | null;
   bitcoinUsd: number | null;
   leaders: Array<{ country: string; office: string; name: string }>;
@@ -106,7 +107,7 @@ export function TimelineExperience() {
     setDayContext(null);
     setIsLoadingDay(true);
     try {
-      const response = await fetch(`/api/day?date=${encodeURIComponent(selectedDate)}`);
+      const response = await fetch(`/api/day?date=${encodeURIComponent(selectedDate)}&v=2`);
       if (response.ok) setDayContext(await response.json() as DayContext);
     } finally {
       setIsLoadingDay(false);
@@ -186,6 +187,7 @@ export function TimelineExperience() {
   const ageCopy = approximateAge === null
     ? "Your age stays private."
     : `You were about ${approximateAge} years old.`;
+  const dayHeadlines = dayContext?.headlines ?? (dayContext?.headline ? [dayContext.headline] : []);
 
   return (
     <main className={`timeline-app ${hasArrived ? "is-travelling" : ""} ${isExhibit ? "is-exhibit" : ""}`}>
@@ -348,7 +350,7 @@ export function TimelineExperience() {
               ) : dayContext ? (
                 <>
                   <div className="headline-grid">
-                    {dayContext.headlines.length ? dayContext.headlines.map((headline) => (
+                    {dayHeadlines.length ? dayHeadlines.map((headline) => (
                       <article className="headline-card" key={headline.sourceUrl}>
                         <p className="eyebrow">{headline.source}</p>
                         <p>{headline.text}</p>
@@ -375,7 +377,7 @@ export function TimelineExperience() {
                     ))}
                   </div>
 
-                  {dayContext.culture && !dayContext.headlines.some((headline) => headline.text === dayContext.culture?.text) && (
+                  {dayContext.culture && !dayHeadlines.some((headline) => headline.text === dayContext.culture?.text) && (
                     <article className="culture-note">
                       <span>Culture</span>
                       <p>{dayContext.culture.text}</p>
