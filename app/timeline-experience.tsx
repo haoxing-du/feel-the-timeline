@@ -18,7 +18,7 @@ type GenerationResult = {
 };
 
 type DayContext = {
-  headline: { text: string; source: string; sourceUrl: string } | null;
+  headlines: Array<{ text: string; source: string; sourceUrl: string }>;
   culture: { text: string; source: string; sourceUrl: string } | null;
   bitcoinUsd: number | null;
   leaders: Array<{ country: string; office: string; name: string }>;
@@ -347,15 +347,20 @@ export function TimelineExperience() {
                 <p className="context-loading">Reconstructing the day…</p>
               ) : dayContext ? (
                 <>
-                  <article className="headline-card">
-                    <p className="eyebrow">In the news</p>
-                    {dayContext.headline ? (
-                      <>
-                        <p>{dayContext.headline.text}</p>
-                        <a href={dayContext.headline.sourceUrl} rel="noreferrer" target="_blank">{dayContext.headline.source} ↗</a>
-                      </>
-                    ) : <p>No archived headline was available for this day.</p>}
-                  </article>
+                  <div className="headline-grid">
+                    {dayContext.headlines.length ? dayContext.headlines.map((headline) => (
+                      <article className="headline-card" key={headline.source}>
+                        <p className="eyebrow">{headline.source}</p>
+                        <p>{headline.text}</p>
+                        <a href={headline.sourceUrl} rel="noreferrer" target="_blank">Read the archive ↗</a>
+                      </article>
+                    )) : (
+                      <article className="headline-card">
+                        <p className="eyebrow">In the news</p>
+                        <p>No archived headline was available for this day.</p>
+                      </article>
+                    )}
+                  </div>
 
                   <div className="day-signals">
                     <div>
@@ -370,7 +375,7 @@ export function TimelineExperience() {
                     ))}
                   </div>
 
-                  {dayContext.culture && dayContext.culture.text !== dayContext.headline?.text && (
+                  {dayContext.culture && !dayContext.headlines.some((headline) => headline.text === dayContext.culture?.text) && (
                     <article className="culture-note">
                       <span>Culture</span>
                       <p>{dayContext.culture.text}</p>

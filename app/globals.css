@@ -336,10 +336,20 @@ button {
   margin: 28px 0 36px;
 }
 
-.headline-card {
-  padding: 21px 0;
+.headline-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   border-top: 1px solid var(--ink);
   border-bottom: 1px solid var(--ink);
+}
+
+.headline-card {
+  padding: 21px 0;
+}
+
+.headline-card + .headline-card {
+  padding-left: 24px;
+  border-left: 1px solid var(--line);
 }
 
 .headline-card .eyebrow {
@@ -347,10 +357,9 @@ button {
 }
 
 .headline-card > p:not(.eyebrow) {
-  max-width: 900px;
   margin: 0;
   font-family: var(--font-display), serif;
-  font-size: clamp(23px, 3vw, 38px);
+  font-size: clamp(21px, 2.4vw, 32px);
   line-height: 1.08;
   letter-spacing: -0.025em;
 }
@@ -824,6 +833,16 @@ button {
 
   .lede {
     margin-top: 24px;
+  }
+
+  .headline-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .headline-card + .headline-card {
+    padding-left: 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
   }
 
   .arrival-stage {
