@@ -10,6 +10,7 @@ type ReplicatePrediction = {
   status: "starting" | "processing" | "succeeded" | "failed" | "canceled";
   output: string | string[] | null;
   error?: string | null;
+  detail?: string;
 };
 
 const MAX_PROMPT_LENGTH = 6_000;
@@ -23,7 +24,11 @@ function outputText(output: ReplicatePrediction["output"]) {
   return Array.isArray(output) ? output.join("") : output ?? "";
 }
 
-function replicateInput(model: (typeof MODEL_ERAS)[number], prompt: string) {
+function conversationPrompt(messages: ChatMessage[]) {
+  return `${messages.map((message) => `${message.role === "user" ? "User" : "Assistant"}: ${message.content}`).join("\n\n")}\n\nAssistant:`;
+}
+
+function replicateInput(model: (typeof MODEL_ERAS)[number], prompt: string, messages: ChatMessage[]) {
   if (model.name === "GPT-2 XL") {
     return {
       prompt_batch: [prompt],
@@ -46,6 +51,28 @@ function replicateInput(model: (typeof MODEL_ERAS)[number], prompt: string) {
       temperature: 0.8,
       top_p: 1,
       repetition_penalty: 1,
+    };
+  }
+
+  if (model.name === "Llama 2 13B Chat") {
+    return {
+      prompt: conversationPrompt(messages),
+      system_prompt: "",
+      max_tokens: 450,
+      temperature: 0.7,
+      top_p: 0.95,
+      top_k: 0,
+    };
+  }
+
+  if (model.name === "DeepSeek-R1") {
+    return {
+      prompt: conversationPrompt(messages),
+      max_tokens: 900,
+      temperature: 0.6,
+      top_p: 0.95,
+      presence_penalty: 0,
+      frequency_penalty: 0,
     };
   }
 
@@ -72,27 +99,38 @@ async function replicateRequest(url: string, init?: RequestInit) {
   });
 }
 
-async function createReplicatePrediction(model: (typeof MODEL_ERAS)[number], prompt: string) {
-  const response = await replicateRequest("https://api.replicate.com/v1/predictions", {
+async function createReplicatePrediction(
+  model: (typeof MODEL_ERAS)[number],
+  prompt: string,
+  messages: ChatMessage[],
+) {
+  const isOfficialModel = model.providerId.includes("/");
+  const endpoint = isOfficialModel
+    ? `https://api.replicate.com/v1/models/${model.providerId}/predictions`
+    : "https://api.replicate.com/v1/predictions";
+  const response = await replicateRequest(endpoint, {
     method: "POST",
     headers: { Prefer: "wait=25", "Cancel-After": "3m" },
-    body: JSON.stringify({ version: model.providerId, input: replicateInput(model, prompt) }),
+    body: JSON.stringify({
+      ...(!isOfficialModel && { version: model.providerId }),
+      input: replicateInput(model, prompt, messages),
+    }),
   });
 
   const prediction = (await response.json()) as ReplicatePrediction;
-  if (!response.ok) throw new Error(prediction.error || "Replicate rejected the request.");
+  if (!response.ok) throw new Error(prediction.detail || prediction.error || "Replicate rejected the request.");
   return prediction;
 }
 
-async function createFeatherlessCompletion(
+async function createOpenRouterCompletion(
   model: (typeof MODEL_ERAS)[number],
   messages: ChatMessage[],
   request: Request,
 ) {
-  const token = process.env.FEATHERLESS_API_KEY;
-  if (!token) throw new Error("Featherless is not configured yet.");
+  const token = process.env.OPENROUTER_API_KEY;
+  if (!token) throw new Error("OpenRouter is not configured yet.");
 
-  const response = await fetch("https://api.featherless.ai/v1/chat/completions", {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -106,6 +144,7 @@ async function createFeatherlessCompletion(
       max_tokens: model.mode === "reasoning" ? 900 : 450,
       temperature: 0.7,
       top_p: 0.95,
+      ...(model.mode === "reasoning" && { reasoning: { enabled: true } }),
     }),
   });
 
@@ -116,7 +155,7 @@ async function createFeatherlessCompletion(
 
   if (!response.ok) {
     const providerMessage = typeof payload.error === "string" ? payload.error : payload.error?.message;
-    throw new Error(providerMessage || "Featherless rejected the request.");
+    throw new Error(providerMessage || "OpenRouter rejected the request.");
   }
 
   const message = payload.choices?.[0]?.message;
@@ -145,8 +184,16 @@ export async function POST(request: Request) {
     }
 
     const model = modelForDate(date);
+    const suppliedMessages = Array.isArray(body.messages) ? body.messages : [];
+    const messages = suppliedMessages
+      .filter((message) => (message.role === "user" || message.role === "assistant") && message.content)
+      .slice(-10)
+      .map((message) => ({ role: message.role, content: message.content.slice(0, MAX_PROMPT_LENGTH) }));
+
+    if (messages.at(-1)?.content !== prompt) messages.push({ role: "user", content: prompt });
+
     if (model.provider === "replicate") {
-      const prediction = await createReplicatePrediction(model, prompt);
+      const prediction = await createReplicatePrediction(model, prompt, messages);
       if (prediction.status === "succeeded") {
         return json({ status: "succeeded", text: outputText(prediction.output) });
       }
@@ -156,14 +203,7 @@ export async function POST(request: Request) {
       return json({ status: "pending", id: prediction.id }, 202);
     }
 
-    const suppliedMessages = Array.isArray(body.messages) ? body.messages : [];
-    const messages = suppliedMessages
-      .filter((message) => (message.role === "user" || message.role === "assistant") && message.content)
-      .slice(-10)
-      .map((message) => ({ role: message.role, content: message.content.slice(0, MAX_PROMPT_LENGTH) }));
-
-    if (messages.at(-1)?.content !== prompt) messages.push({ role: "user", content: prompt });
-    return json(await createFeatherlessCompletion(model, messages, request));
+    return json(await createOpenRouterCompletion(model, messages, request));
   } catch (error) {
     const message = error instanceof Error ? error.message : "The model request failed.";
     const unconfigured = message.includes("not configured");

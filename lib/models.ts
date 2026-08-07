@@ -8,7 +8,7 @@ export type ModelEra = {
   mode: InteractionMode;
   arrival: string;
   instruction: string;
-  provider: "replicate" | "featherless";
+  provider: "replicate" | "openrouter";
   providerId: string;
 };
 
@@ -56,8 +56,8 @@ export const MODEL_ERAS: ModelEra[] = [
     mode: "chat",
     arrival: "A downloadable model can hold a real conversation.",
     instruction: "Talk naturally. This model was tuned for multi-turn chat.",
-    provider: "featherless",
-    providerId: "meta-llama/Llama-2-13b-chat-hf",
+    provider: "replicate",
+    providerId: "meta/llama-2-13b-chat",
   },
   {
     released: "2024-07-23",
@@ -67,30 +67,30 @@ export const MODEL_ERAS: ModelEra[] = [
     mode: "chat",
     arrival: "A small open model is useful enough to become a daily assistant.",
     instruction: "Ask a question, revise an idea, or continue the conversation.",
-    provider: "featherless",
-    providerId: "meta-llama/Meta-Llama-3.1-8B-Instruct",
+    provider: "openrouter",
+    providerId: "meta-llama/llama-3.1-8b-instruct",
   },
   {
     released: "2025-01-20",
     year: "2025",
-    name: "DeepSeek-R1 Distill",
+    name: "DeepSeek-R1",
     maker: "DeepSeek",
     mode: "reasoning",
     arrival: "Reasoning traces make the model's work visible before its answer.",
     instruction: "Give it a problem that benefits from working through intermediate steps.",
-    provider: "featherless",
-    providerId: "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
+    provider: "replicate",
+    providerId: "deepseek-ai/deepseek-r1",
   },
   {
-    released: "2026-03-02",
+    released: "2026-03-10",
     year: "2026",
     name: "Qwen 3.5 9B",
     maker: "Alibaba",
     mode: "reasoning",
     arrival: "Long context, reasoning, and multimodal understanding fit into nine billion parameters.",
     instruction: "Use it as a modern assistant; the first exhibit begins with text.",
-    provider: "featherless",
-    providerId: "Qwen/Qwen3.5-9B",
+    provider: "openrouter",
+    providerId: "qwen/qwen3.5-9b",
   },
 ];
 

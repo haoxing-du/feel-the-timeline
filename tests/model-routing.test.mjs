@@ -9,8 +9,9 @@ const boundaries = [
   ["2022-10-20", "FLAN-T5 XL"],
   ["2023-07-18", "Llama 2 13B Chat"],
   ["2024-07-23", "Llama 3.1 8B"],
-  ["2025-01-20", "DeepSeek-R1 Distill"],
-  ["2026-03-02", "Qwen 3.5 9B"],
+  ["2025-01-20", "DeepSeek-R1"],
+  ["2026-03-09", "DeepSeek-R1"],
+  ["2026-03-10", "Qwen 3.5 9B"],
 ];
 
 test("routes release boundaries to the correct exhibit", () => {
