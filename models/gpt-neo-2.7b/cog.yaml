@@ -2,6 +2,7 @@ image: "r8.im/haoxing-du/feel-timeline-gpt-neo-2-7b"
 
 build:
   gpu: true
+  cuda: "12.1"
   python_version: "3.11"
   python_requirements: requirements.txt
   run:
