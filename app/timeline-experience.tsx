@@ -27,7 +27,7 @@ type BasicDayContext = {
   taylorSwiftAlbum: string;
   sport: { text: string; sourceUrl: string } | null;
   leaders: Array<{ country: string; office: string; name: string }>;
-  historical: {
+  historical?: {
     billboard: { song: string; artist: string } | null;
     boxOfficeMovie: string | null;
     weather: { highF: number; lowF: number; description: string } | null;
@@ -203,7 +203,7 @@ export function TimelineExperience() {
 
   async function loadDay(selectedDate: string) {
     const encodedDate = encodeURIComponent(selectedDate);
-    void fetch(`/api/day/basic?date=${encodedDate}&v=2`)
+    void fetch(`/api/day/basic?date=${encodedDate}&v=3`)
       .then((response) => response.ok ? response.json() : null)
       .then((payload) => setBasic(payload as BasicDayContext | null))
       .catch(() => setBasic(null));
@@ -272,42 +272,43 @@ export function TimelineExperience() {
     : `You were about ${selectedYear - Number(birthYear)} years old.`;
   const usPresident = basic?.leaders.find((leader) => leader.country === "United States")?.name;
   const ukPrimeMinister = basic?.leaders.find((leader) => leader.country === "United Kingdom")?.name;
-  const money = (value: number | null) => value === null ? "unavailable" : `$${Math.round(value).toLocaleString("en-US")}`;
+  const historical = basic?.historical;
+  const money = (value: number | null | undefined) => value == null ? "unavailable" : `$${Math.round(value).toLocaleString("en-US")}`;
   const facts = basic ? [
     <p key="bitcoin">Bitcoin was worth {money(basic.bitcoinUsd)}.</p>,
     <p key="taylor">Taylor Swift’s latest album was <i>{basic.taylorSwiftAlbum}</i>.</p>,
     <p key="billboard">
-      {basic.historical.billboard
-        ? <>The No. 1 song was <i>{basic.historical.billboard.song}</i> by {basic.historical.billboard.artist}.</>
+      {historical?.billboard
+        ? <>The No. 1 song was <i>{historical.billboard.song}</i> by {historical.billboard.artist}.</>
         : <>The No. 1 song is unavailable.</>}
     </p>,
     <p key="box-office">
-      {basic.historical.boxOfficeMovie
-        ? <>The weekend box-office winner was <i>{basic.historical.boxOfficeMovie}</i>.</>
+      {historical?.boxOfficeMovie
+        ? <>The weekend box-office winner was <i>{historical.boxOfficeMovie}</i>.</>
         : <>The weekend box-office winner is unavailable.</>}
     </p>,
     <p key="weather">
-      {basic.historical.weather
-        ? <>San Francisco was {basic.historical.weather.description}, with a high of {Math.round(basic.historical.weather.highF)}° and a low of {Math.round(basic.historical.weather.lowF)}°.</>
+      {historical?.weather
+        ? <>San Francisco was {historical.weather.description}, with a high of {Math.round(historical.weather.highF)}° and a low of {Math.round(historical.weather.lowF)}°.</>
         : <>San Francisco weather is unavailable.</>}
     </p>,
-    <p key="iphone">The newest iPhone was the {basic.historical.newestIPhone}.</p>,
+    <p key="iphone">The newest iPhone was the {historical?.newestIPhone ?? "unavailable"}.</p>,
     <div className="world-lines" key="leaders">
       {usPresident && <p>{usPresident} was President of the United States.</p>}
       {ukPrimeMinister && <p>{ukPrimeMinister} was Prime Minister of the United Kingdom.</p>}
     </div>,
     <div className="world-lines" key="champions">
-      <p>Reigning NBA and NFL champions: {basic.historical.champions.nba} and {basic.historical.champions.nfl}.</p>
-      <p>Reigning MLB and Premier League champions: {basic.historical.champions.mlb} and {basic.historical.champions.premierLeague}.</p>
+      <p>Reigning NBA and NFL champions: {historical?.champions.nba ?? "unavailable"} and {historical?.champions.nfl ?? "unavailable"}.</p>
+      <p>Reigning MLB and Premier League champions: {historical?.champions.mlb ?? "unavailable"} and {historical?.champions.premierLeague ?? "unavailable"}.</p>
     </div>,
     basic.sport
       ? <p className="sport-line" key="sport">In sports, <a href={basic.sport.sourceUrl} rel="noreferrer" target="_blank">{basic.sport.text}</a></p>
       : <p key="sport">The day’s sports headline is unavailable.</p>,
-    <p key="gas">A gallon of regular gas averaged {basic.historical.gasPriceUsd === null ? "an unavailable amount" : `$${basic.historical.gasPriceUsd.toFixed(2)}`} in the US.</p>,
-    <p key="minimum-wage">The federal minimum wage was ${basic.historical.federalMinimumWageUsd.toFixed(2)} an hour.</p>,
+    <p key="gas">A gallon of regular gas averaged {historical?.gasPriceUsd == null ? "an unavailable amount" : `$${historical.gasPriceUsd.toFixed(2)}`} in the US.</p>,
+    <p key="minimum-wage">The federal minimum wage was {historical?.federalMinimumWageUsd == null ? "unavailable" : `$${historical.federalMinimumWageUsd.toFixed(2)} an hour`}.</p>,
     <div className="world-lines" key="housing">
-      <p>The median US home listing price was {money(basic.historical.medianListingPrice.unitedStates)}.</p>
-      <p>In San Francisco, it was {money(basic.historical.medianListingPrice.sanFrancisco)}.</p>
+      <p>The median US home listing price was {money(historical?.medianListingPrice.unitedStates)}.</p>
+      <p>In San Francisco, it was {money(historical?.medianListingPrice.sanFrancisco)}.</p>
     </div>,
   ] : [];
   const timelineCursor = Math.min(100, Math.max(0, ((selectedYear - 2019) / 7) * 100));

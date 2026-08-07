@@ -9,6 +9,6 @@ export async function GET(request: Request) {
   }
 
   return Response.json(await getBasicDayContext(date), {
-    headers: { "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800" },
+    headers: { "Cache-Control": "public, max-age=300, stale-while-revalidate=3600" },
   });
 }
