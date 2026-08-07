@@ -12,6 +12,13 @@ export type DayContext = {
   leaders: Array<{ country: string; office: string; name: string }>;
 };
 
+export type BasicDayContext = {
+  bitcoinUsd: number | null;
+  taylorSwiftAlbum: string;
+  sport: NewsItem | null;
+  leaders: Array<{ country: string; office: string; name: string }>;
+};
+
 type DayStory = {
   label: string;
   title: string;
@@ -208,7 +215,7 @@ async function currentEvents(date: string) {
       "User-Agent": "FeelTheTimeline/0.1 (https://github.com/haoxing-du/feel-the-timeline)",
     },
   });
-  if (!response.ok) return { headline: null, culture: null, topics: [] };
+  if (!response.ok) return { headline: null, culture: null, sport: null, topics: [] };
 
   const payload = await response.json() as { parse?: { wikitext?: string | { "*"?: string } } };
   const rawWikitext = payload.parse?.wikitext;
@@ -220,6 +227,7 @@ async function currentEvents(date: string) {
   return {
     headline: parsedSections.find((section) => section.item)?.item ?? null,
     culture: parsedSections.find((section) => section.title === "Arts and culture")?.item ?? null,
+    sport: parsedSections.find((section) => section.title === "Sports")?.item ?? null,
     topics,
   };
 }
@@ -297,6 +305,26 @@ async function bitcoinPrice(date: string) {
   return payload.values?.[0]?.y ?? null;
 }
 
+async function guardianSport(date: string): Promise<NewsItem | null> {
+  const url = new URL("https://content.guardianapis.com/search");
+  url.search = new URLSearchParams({
+    "from-date": date,
+    "to-date": date,
+    "use-date": "published",
+    "order-by": "newest",
+    "page-size": "1",
+    section: "sport",
+    "api-key": process.env.GUARDIAN_API_KEY ?? "test",
+  }).toString();
+  const response = await fetch(url);
+  if (!response.ok) return null;
+  const payload = await response.json() as {
+    response?: { results?: Array<{ webTitle: string; webUrl: string }> };
+  };
+  const item = payload.response?.results?.[0];
+  return item ? { text: item.webTitle, source: "The Guardian", sourceUrl: item.webUrl } : null;
+}
+
 function leadersForDate(date: string) {
   const us = date < "2021-01-20" ? "Donald Trump" : date < "2025-01-20" ? "Joe Biden" : "Donald Trump";
   const uk = date < "2022-09-06"
@@ -316,11 +344,47 @@ function leadersForDate(date: string) {
   ];
 }
 
-export async function getDayContext(date: string): Promise<DayContext> {
-  const [news, guardian, nyt, bitcoinUsd] = await Promise.all([
+function taylorSwiftAlbumForDate(date: string) {
+  const albums = [
+    { released: "2019-08-23", title: "Lover" },
+    { released: "2020-07-24", title: "folklore" },
+    { released: "2020-12-11", title: "evermore" },
+    { released: "2022-10-21", title: "Midnights" },
+    { released: "2024-04-19", title: "The Tortured Poets Department" },
+    { released: "2025-10-03", title: "The Life of a Showgirl" },
+  ];
+  return [...albums].reverse().find((album) => album.released <= date)?.title ?? "Lover";
+}
+
+export async function getBasicDayContext(date: string): Promise<BasicDayContext> {
+  const [news, bitcoinUsd, sport] = await Promise.all([
     currentEvents(date).catch((error) => {
       console.error("Could not load current events", error);
-      return { headline: null, culture: null, topics: [] };
+      return { headline: null, culture: null, sport: null, topics: [] };
+    }),
+    bitcoinPrice(date).catch((error) => {
+      console.error("Could not load Bitcoin price", error);
+      return null;
+    }),
+    guardianSport(date).catch((error) => {
+      console.error("Could not load sports archive", error);
+      return null;
+    }),
+  ]);
+
+  return {
+    bitcoinUsd,
+    taylorSwiftAlbum: taylorSwiftAlbumForDate(date),
+    sport: news.sport ?? sport,
+    leaders: leadersForDate(date),
+  };
+}
+
+export async function getDayStories(date: string) {
+  const [news, guardian, nyt] = await Promise.all([
+    currentEvents(date).catch((error) => {
+      console.error("Could not load current events", error);
+      return { headline: null, culture: null, sport: null, topics: [] };
     }),
     guardianHeadlines(date).catch((error) => {
       console.error("Could not load Guardian archive", error);
@@ -330,19 +394,23 @@ export async function getDayContext(date: string): Promise<DayContext> {
       console.error("Could not load NYT archive", error);
       return [];
     }),
-    bitcoinPrice(date).catch((error) => {
-      console.error("Could not load Bitcoin price", error);
-      return null;
-    }),
   ]);
   const headlines = [...guardian, ...nyt];
-  const stories = await curateStories(date, headlines, news.topics);
+  return {
+    stories: await curateStories(date, headlines, news.topics),
+    headlines,
+    culture: news.culture,
+  };
+}
+
+export async function getDayContext(date: string): Promise<DayContext> {
+  const [basic, news] = await Promise.all([getBasicDayContext(date), getDayStories(date)]);
 
   return {
-    stories,
-    headlines: headlines.length ? headlines : news.headline ? [news.headline] : [],
+    stories: news.stories,
+    headlines: news.headlines,
     culture: news.culture,
-    bitcoinUsd,
-    leaders: leadersForDate(date),
+    bitcoinUsd: basic.bitcoinUsd,
+    leaders: basic.leaders,
   };
 }

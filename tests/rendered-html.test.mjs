@@ -19,7 +19,7 @@ test("renders the timeline experience", async () => {
   const html = await response.text();
 
   assert.match(html, /<title>Feel the Timeline<\/title>/i);
-  assert.match(html, /The past is only/);
-  assert.match(html, /Where do you want to go\?/);
+  assert.match(html, /What year were you born\?/);
+  assert.match(html, /What day would you like to visit\?/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/);
 });
