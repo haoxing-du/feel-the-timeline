@@ -30,11 +30,10 @@ type BasicDayContext = {
   historical?: {
     billboard: { song: string; artist: string } | null;
     boxOfficeMovie: string | null;
-    weather: { highF: number; lowF: number; description: string } | null;
+    weather: { highF: number; lowF: number; description: string; location: string } | null;
     newestIPhone: string;
     champions: { nba: string; nfl: string; mlb: string; premierLeague: string };
     gasPriceUsd: number | null;
-    federalMinimumWageUsd: number;
     medianListingPrice: { unitedStates: number | null; sanFrancisco: number | null };
   };
 };
@@ -49,7 +48,7 @@ type StoryData = {
 
 const DEFAULT_DATE = "2022-11-30";
 const FACT_COUNT = 12;
-const LAST_FACT_STEP = FACT_COUNT + 2;
+const LAST_FACT_STEP = FACT_COUNT + 1;
 const STORY_STEP = LAST_FACT_STEP + 1;
 const CHAT_STEP = STORY_STEP + 1;
 
@@ -95,6 +94,7 @@ async function responsePayload(response: Response) {
 export function TimelineExperience() {
   const [date, setDate] = useState(DEFAULT_DATE);
   const [birthYear, setBirthYear] = useState("");
+  const [location, setLocation] = useState("");
   const [view, setView] = useState<"landing" | "journey">("landing");
   const [revealStep, setRevealStep] = useState(0);
   const [error, setError] = useState("");
@@ -122,7 +122,7 @@ export function TimelineExperience() {
 
   useEffect(() => {
     if (view !== "journey") return;
-    const timers = [150, 2_650].map((delay, index) =>
+    const timers = [150].map((delay, index) =>
       window.setTimeout(() => setRevealStep(index + 1), delay),
     );
     return () => timers.forEach(window.clearTimeout);
@@ -131,13 +131,13 @@ export function TimelineExperience() {
   useEffect(() => {
     if (!basic) return;
     const timers = Array.from({ length: FACT_COUNT }, (_, index) =>
-      window.setTimeout(() => setRevealStep(index + 3), 650 + index * 2_500),
+      window.setTimeout(() => setRevealStep(index + 2), 650 + index * 2_500),
     );
     return () => timers.forEach(window.clearTimeout);
   }, [basic]);
 
   useEffect(() => {
-    if (revealStep < 3 || revealStep > LAST_FACT_STEP) return;
+    if (revealStep < 2 || revealStep > LAST_FACT_STEP) return;
     const timer = window.setTimeout(() => factEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 120);
     return () => window.clearTimeout(timer);
   }, [revealStep]);
@@ -176,6 +176,7 @@ export function TimelineExperience() {
   function travel(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const numericBirthYear = Number(birthYear);
+    const selectedLocation = location.trim();
 
     if (date < MIN_DATE) {
       setError("GPT-2 was fully released on November 5, 2019. We haven’t built anything earlier yet. Try a more recent date.");
@@ -189,6 +190,10 @@ export function TimelineExperience() {
       setError("Enter a valid birth year.");
       return;
     }
+    if (selectedLocation.length < 2) {
+      setError("Enter a city or ZIP code.");
+      return;
+    }
 
     setError("");
     setRevealStep(0);
@@ -198,12 +203,13 @@ export function TimelineExperience() {
     setMessages([]);
     setPrompt("");
     setView("journey");
-    void loadDay(date);
+    void loadDay(date, selectedLocation);
   }
 
-  async function loadDay(selectedDate: string) {
+  async function loadDay(selectedDate: string, selectedLocation: string) {
     const encodedDate = encodeURIComponent(selectedDate);
-    void fetch(`/api/day/basic?date=${encodedDate}&v=3`)
+    const encodedLocation = encodeURIComponent(selectedLocation);
+    void fetch(`/api/day/basic?date=${encodedDate}&location=${encodedLocation}&v=4`)
       .then((response) => response.ok ? response.json() : null)
       .then((payload) => setBasic(payload as BasicDayContext | null))
       .catch(() => setBasic(null));
@@ -275,7 +281,12 @@ export function TimelineExperience() {
   const historical = basic?.historical;
   const money = (value: number | null | undefined) => value == null ? "unavailable" : `$${Math.round(value).toLocaleString("en-US")}`;
   const facts = basic ? [
-    <p key="bitcoin">Bitcoin was worth {money(basic.bitcoinUsd)}.</p>,
+    <p key="weather">
+      {historical?.weather
+        ? <>{historical.weather.location} was {historical.weather.description}, with a high of {Math.round(historical.weather.highF)}° and a low of {Math.round(historical.weather.lowF)}°.</>
+        : <>Weather for {location.trim()} is unavailable.</>}
+    </p>,
+    <p key="age">{ageLine}</p>,
     <p key="taylor">Taylor Swift’s latest album was <i>{basic.taylorSwiftAlbum}</i>.</p>,
     <p key="billboard">
       {historical?.billboard
@@ -286,11 +297,6 @@ export function TimelineExperience() {
       {historical?.boxOfficeMovie
         ? <>The weekend box-office winner was <i>{historical.boxOfficeMovie}</i>.</>
         : <>The weekend box-office winner is unavailable.</>}
-    </p>,
-    <p key="weather">
-      {historical?.weather
-        ? <>San Francisco was {historical.weather.description}, with a high of {Math.round(historical.weather.highF)}° and a low of {Math.round(historical.weather.lowF)}°.</>
-        : <>San Francisco weather is unavailable.</>}
     </p>,
     <p key="iphone">The newest iPhone was the {historical?.newestIPhone ?? "unavailable"}.</p>,
     <div className="world-lines" key="leaders">
@@ -305,11 +311,11 @@ export function TimelineExperience() {
       ? <p className="sport-line" key="sport">In sports, <a href={basic.sport.sourceUrl} rel="noreferrer" target="_blank">{basic.sport.text}</a></p>
       : <p key="sport">The day’s sports headline is unavailable.</p>,
     <p key="gas">A gallon of regular gas averaged {historical?.gasPriceUsd == null ? "an unavailable amount" : `$${historical.gasPriceUsd.toFixed(2)}`} in the US.</p>,
-    <p key="minimum-wage">The federal minimum wage was {historical?.federalMinimumWageUsd == null ? "unavailable" : `$${historical.federalMinimumWageUsd.toFixed(2)} an hour`}.</p>,
     <div className="world-lines" key="housing">
       <p>The median US home listing price was {money(historical?.medianListingPrice.unitedStates)}.</p>
       <p>In San Francisco, it was {money(historical?.medianListingPrice.sanFrancisco)}.</p>
     </div>,
+    <p key="bitcoin">Bitcoin was worth {money(basic.bitcoinUsd)}.</p>,
   ] : [];
   const timelineCursor = Math.min(100, Math.max(0, ((selectedYear - 2019) / 7) * 100));
 
@@ -347,6 +353,17 @@ export function TimelineExperience() {
               value={date}
             />
 
+            <label htmlFor="location">Where were you living?</label>
+            <input
+              autoComplete="address-level2"
+              id="location"
+              onChange={(event) => { setLocation(event.target.value); setError(""); }}
+              placeholder="City or ZIP code"
+              required
+              type="text"
+              value={location}
+            />
+
             {error && <p className="form-error" role="alert">{error}</p>}
             <button type="submit">Go</button>
           </form>
@@ -364,8 +381,7 @@ export function TimelineExperience() {
       <div className="journey-stream">
         <section className="fact-stream" aria-live="polite">
           <h1 className={revealStep >= 1 ? "revealed" : ""}>{formatDate(date)}</h1>
-          <p className={revealStep >= 2 ? "revealed" : ""}>{ageLine}</p>
-          {facts.slice(0, Math.max(0, revealStep - 2)).map((fact) => (
+          {facts.slice(0, Math.max(0, revealStep - 1)).map((fact) => (
             <div className="fact-item" key={fact.key}>{fact}</div>
           ))}
           <div ref={factEndRef} />

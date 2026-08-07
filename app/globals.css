@@ -251,10 +251,7 @@ a {
 }
 
 .world-lines p {
-  margin-bottom: 10px;
-  font-family: var(--font-sans), sans-serif;
-  font-size: clamp(15px, 1.6vw, 20px);
-  letter-spacing: -0.015em;
+  margin-bottom: 20px;
 }
 
 .world-lines a {

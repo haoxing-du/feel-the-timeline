@@ -1,11 +1,10 @@
 export type HistoricalFacts = {
   billboard: { song: string; artist: string } | null;
   boxOfficeMovie: string | null;
-  weather: { highF: number; lowF: number; description: string } | null;
+  weather: { highF: number; lowF: number; description: string; location: string } | null;
   newestIPhone: string;
   champions: { nba: string; nfl: string; mlb: string; premierLeague: string };
   gasPriceUsd: number | null;
-  federalMinimumWageUsd: number;
   medianListingPrice: { unitedStates: number | null; sanFrancisco: number | null };
 };
 
@@ -158,16 +157,34 @@ const WEATHER_DESCRIPTIONS: Record<number, string> = {
   82: "showery", 85: "snowy", 86: "snowy", 95: "stormy", 96: "stormy", 99: "stormy",
 };
 
-async function sanFranciscoWeather(date: string) {
+async function locationWeather(date: string, search: string) {
+  const geocodingUrl = new URL("https://geocoding-api.open-meteo.com/v1/search");
+  geocodingUrl.search = new URLSearchParams({ name: search, count: "1", language: "en", format: "json" }).toString();
+  const geocodingResponse = await fetch(geocodingUrl, { signal: AbortSignal.timeout(8_000) });
+  if (!geocodingResponse.ok) return null;
+  const geocoding = await geocodingResponse.json() as {
+    results?: Array<{
+      name: string;
+      latitude: number;
+      longitude: number;
+      timezone: string;
+      admin1?: string;
+      country?: string;
+      country_code?: string;
+    }>;
+  };
+  const place = geocoding.results?.[0];
+  if (!place) return null;
+
   const url = new URL("https://archive-api.open-meteo.com/v1/archive");
   url.search = new URLSearchParams({
-    latitude: "37.7749",
-    longitude: "-122.4194",
+    latitude: String(place.latitude),
+    longitude: String(place.longitude),
     start_date: date,
     end_date: date,
     daily: "temperature_2m_max,temperature_2m_min,weather_code",
     temperature_unit: "fahrenheit",
-    timezone: "America/Los_Angeles",
+    timezone: place.timezone,
   }).toString();
   const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
   if (!response.ok) return null;
@@ -178,7 +195,9 @@ async function sanFranciscoWeather(date: string) {
   const lowF = payload.daily?.temperature_2m_min?.[0];
   const code = payload.daily?.weather_code?.[0];
   if (highF === undefined || lowF === undefined || code === undefined) return null;
-  return { highF, lowF, description: WEATHER_DESCRIPTIONS[code] ?? "unremarkable" };
+  const area = place.admin1 && place.admin1 !== place.name ? place.admin1 : place.country;
+  const location = area ? `${place.name}, ${area}` : place.name;
+  return { highF, lowF, description: WEATHER_DESCRIPTIONS[code] ?? "unremarkable", location };
 }
 
 async function fredValue(series: string, date: string) {
@@ -192,11 +211,11 @@ async function fredValue(series: string, date: string) {
   return Number.isFinite(value) ? value : null;
 }
 
-export async function historicalFacts(date: string): Promise<HistoricalFacts> {
+export async function historicalFacts(date: string, location: string): Promise<HistoricalFacts> {
   const [billboard, boxOfficeMovie, weather, gasPriceUsd, unitedStates, sanFrancisco] = await Promise.all([
     billboardNumberOne(date).catch(() => null),
     boxOfficeNumberOne(date).catch(() => null),
-    sanFranciscoWeather(date).catch(() => null),
+    locationWeather(date, location).catch(() => null),
     fredValue("GASREGW", date).catch(() => null),
     fredValue("MEDLISPRIUS", date).catch(() => null),
     fredValue("MEDLISPRI6075", date).catch(() => null),
@@ -214,7 +233,6 @@ export async function historicalFacts(date: string): Promise<HistoricalFacts> {
       premierLeague: latest(date, PREMIER_LEAGUE_CHAMPIONS),
     },
     gasPriceUsd,
-    federalMinimumWageUsd: 7.25,
     medianListingPrice: { unitedStates, sanFrancisco },
   };
 }

@@ -359,7 +359,7 @@ function taylorSwiftAlbumForDate(date: string) {
   return [...albums].reverse().find((album) => album.released <= date)?.title ?? "Lover";
 }
 
-export async function getBasicDayContext(date: string): Promise<BasicDayContext> {
+export async function getBasicDayContext(date: string, location = "San Francisco, CA"): Promise<BasicDayContext> {
   const [news, bitcoinUsd, sport, historical] = await Promise.all([
     currentEvents(date).catch((error) => {
       console.error("Could not load current events", error);
@@ -373,7 +373,7 @@ export async function getBasicDayContext(date: string): Promise<BasicDayContext>
       console.error("Could not load sports archive", error);
       return null;
     }),
-    historicalFacts(date),
+    historicalFacts(date, location),
   ]);
 
   return {
@@ -408,8 +408,8 @@ export async function getDayStories(date: string) {
   };
 }
 
-export async function getDayContext(date: string): Promise<DayContext> {
-  const [basic, news] = await Promise.all([getBasicDayContext(date), getDayStories(date)]);
+export async function getDayContext(date: string, location?: string): Promise<DayContext> {
+  const [basic, news] = await Promise.all([getBasicDayContext(date, location), getDayStories(date)]);
 
   return {
     stories: news.stories,

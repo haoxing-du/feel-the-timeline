@@ -21,5 +21,6 @@ test("renders the timeline experience", async () => {
   assert.match(html, /<title>Feel the Timeline<\/title>/i);
   assert.match(html, /What year were you born\?/);
   assert.match(html, /What day would you like to visit\?/);
+  assert.match(html, /Where were you living\?/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/);
 });
